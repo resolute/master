@@ -1,0 +1,40 @@
+{
+  "name": "@resolute/master",
+  "version": "0.0.1",
+  "description": "Establish and maintain a master process using Memcache for election",
+  "main": "lib",
+  "types": "lib",
+  "scripts": {
+    "build": "npx tsc",
+    "release": "npx np",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/resolute/master.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Resolute Digital",
+  "dependencies": {
+    "@resolute/runtime": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "np": "*",
+    "typescript": "*"
+  },
+  "files": [
+    "lib"
+  ],
+  "bugs": {
+    "url": "https://github.com/resolute/master/issues"
+  },
+  "homepage": "https://github.com/resolute/master",
+  "directories": {
+    "lib": "lib"
+  },
+  "keywords": [],
+  "license": "ISC"
+}
