@@ -18,7 +18,8 @@
   },
   "author": "Resolute Digital",
   "dependencies": {
-    "@resolute/runtime": "^1.0.1"
+    "@resolute/runtime": "^1.0.1",
+    "@resolute/memcache": "^0"
   },
   "devDependencies": {
     "@types/node": "*",

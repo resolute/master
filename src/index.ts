@@ -1,27 +1,22 @@
 import os from 'os';
 import { shutdown } from '@resolute/runtime';
+import memcache from '@resolute/memcache';
+import { MemcacheClient, MemcacheOptions } from '@resolute/memcache/lib/types';
 
 const masters = {};
-
-interface MemcacheLike {
-    add: Function; // (key: string, value: any, ttl?: number) => Promise<any>;
-    del: Function; // (key: string) => Promise<any>;
-    get: Function; // (key: string) => Promise<any>;
-    set: Function; // (key: string, value: any, ttl?: number) => Promise<any>;
-}
 
 export default async ({
     name = '',
     prefix = 'master-task-',
     uid = `${os.hostname}:${process.pid}`,
-    duration = 60000,
+    duration = 60_000,
     cache,
 }: {
     name: any,
     prefix?: string,
     uid?: string,
     duration?: number,
-    cache: MemcacheLike
+    cache: MemcacheClient | MemcacheOptions
 }) => {
 
     if (typeof name !== 'string' || !name) {
@@ -31,31 +26,43 @@ export default async ({
     const key = prefix + name;
 
     if (!masters[key]) {
-        masters[key] = new Promise(resolve => {
-            const { add, del, get, set } = cache;
+        masters[key] = new Promise((resolve) => {
+
+            const { add, del, set } = (typeof cache === 'object' && 'add' in cache)
+                ? cache // memcache client
+                : memcache(cache); // memcache options
 
             const fraction = () => duration - .1 * duration +
                 Math.random() * .2 * duration; // 70% - 90% of duration
 
-            const stayMasterLoop = () => set(key, uid, duration / 1000)
-                .catch(() => { }) // squash any errors with memcache and stay as the master
-                .then(() => { setTimeout(stayMasterLoop, fraction()); });
+            const stayMasterLoop = async () => {
+                try {
+                    await set(key, uid, duration / 1_000);
+                } catch {
+                    // squash any errors with memcache and stay as the master
+                }
+                setTimeout(stayMasterLoop, fraction());
+            }
 
-            const checkMasterLoop = () =>
-                add(key, uid, duration / 1000)
-                    .then(() => uid)
-                    .catch(() => get(key))
-                    .then(val => {
-                        if (val === uid || val === null) {
-                            throw new Error('Someone else is still master');
-                        }
-                    })
-                    .then(stayMasterLoop)
-                    .then(resolve)
-                    .then(() => shutdown(() => del(key)))
-                    .catch(() => { setTimeout(checkMasterLoop, fraction()); });
+            const onMasterShutdown = async () => {
+                try {
+                    await del(key);
+                } catch { }
+            }
 
-            setTimeout(checkMasterLoop, 2000); // give time for dying SIGINT to del()
+            const checkMasterLoop = async () => {
+                try {
+                    await add(key, uid, duration / 1_000);
+                    stayMasterLoop();
+                    shutdown(onMasterShutdown);
+                    resolve();
+                    return;
+                } catch {
+                    setTimeout(checkMasterLoop, fraction());
+                }
+            }
+
+            setTimeout(checkMasterLoop, 2_000); // give time for dying SIGINT to del()
         });
     }
 
