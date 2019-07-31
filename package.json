@@ -1,6 +1,6 @@
 {
   "name": "@resolute/master",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Establish and maintain a master process using Memcache for election",
   "main": "lib",
   "types": "lib",
